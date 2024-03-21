@@ -1,0 +1,32 @@
+node {
+    def mavenHome  = tool name: 'maven'
+    stage ('Checkout code'){
+        git credentialsId: '056cb69a-1bca-40bf-bf09-ca5137a9c022', url: 'https://github.com/cloud-rohit-1997/maven-web-application.git'
+    }
+
+    stage ('Build the packages'){
+        sh "${mavenHome}/bin/mvn clean package"
+    }
+
+    stage('SonarQube Report'){
+         sh "${mavenHome}/bin/mvn clean sonar:sonar"
+    }
+
+    stage('Uplaoding artifacts to Nexus'){
+        sh "${mavenHome}/bin/mvn clean deploy"
+    }
+
+    stage ('Deploying it to tomcat server'){
+        sshagent(['b5630a70-cb72-4d34-b870-34f5f23d6583']) {
+            sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@13.127.237.138:/opt/apache-tomcat-9.0.87/webapps"
+        }
+    }
+
+    stage ('Sending email notification'){
+        emailext body: '''LAVADI BUILD SUCCESSFULL
+        Please contact Rohit Bhai''', subject: 'LAVADI', to: 'lohitkattimani1323@gmail.com'
+    }
+
+}
+
+

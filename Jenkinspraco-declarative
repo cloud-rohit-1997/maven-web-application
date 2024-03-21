@@ -1,0 +1,76 @@
+pipeline{
+    agent any
+    tools{
+        maven 'maven'
+    }
+
+    options{
+        timestamps()
+        buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '5', daysToKeepStr: '5', numToKeepStr: ''))
+    }
+
+    triggers{
+        pollSCM('* * * * *')
+        cron('* * * * *')
+        githubPush()
+    }
+    
+    stages{
+        stage('Checkout the Code'){
+            steps{
+                git credentialsId: '056cb69a-1bca-40bf-bf09-ca5137a9c022', url: 'https://github.com/cloud-rohit-1997/maven-web-application.git'
+            }
+            
+        }
+
+        stage('Build the maven'){
+            steps{
+                sh "mvn clean package"
+            }
+        }
+
+        stage('SonarQube Report'){
+            steps{
+                sh "mvn clean sonar:sonar"
+            }
+        }
+
+        stage('Uploading Artifacts to Nexus'){
+            steps{
+                sh "mvn clean deploy"
+            }
+        }
+
+        stage('Deploying application to Tomcat'){
+            steps{
+                sshagent(['b5630a70-cb72-4d34-b870-34f5f23d6583']){
+                sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@13.127.237.138:/opt/apache-tomcat-9.0.87/webapps"
+            }
+            }
+
+        }
+
+    }
+post {
+    always{
+        emailext body: '''LAVADI BUILD always
+        Please contact Rohit Bhai''', subject: 'LAVADI', to: 'rohitbomman1997@gmail.com'
+        }
+
+    failure{
+        emailext body: '''LAVADI BUILD failure
+        Please contact Rohit Bhai''', subject: 'LAVADI', to: 'rohitbomman1997@gmail.com'
+        }
+
+    success{
+        emailext body: '''LAVADI BUILD SUCCESSFULL
+        Please contact Rohit Bhai''', subject: 'LAVADI', to: 'rohitbomman1997@gmail.com'
+        }
+
+
+}
+
+}
+
+
+
